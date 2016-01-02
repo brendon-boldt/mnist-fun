@@ -1,5 +1,6 @@
 import molasses as mo
 import numpy
+import ops
 
 import input_data
 mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
@@ -68,6 +69,7 @@ for i in range(101):
     print("step %d, training accuracy %g"%(i, train_accuracy))
   train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
+'''
 def t_map(func, tensor):
   flat = tf.reshape(tensor, [-1]).eval()
   flat_mapped = list(map(func, flat))
@@ -80,14 +82,16 @@ def normalize(tensor, lower, upper):
   scaled = t_map(lambda x: numpy.uint8(x*(upper-lower)/(maxVal-minVal)), translated)
   #print(tf.reduce_min(scaled).eval(),tf.reduce_max(scaled).eval())
   return scaled
+'''
 
 W_conv1_t = tf.transpose(W_conv1, perm=[3,0,1,2])
 index = 0
+dir = "filters/"
 for t in W_conv1_t.eval():
-  with open('filter'+str(index)+'.png', "wb") as file:
+  with open(dir+'filter'+str(index)+'.png', "wb") as file:
     t = tf.constant(t)
     t_n = tf.image.resize_images(t,50,50, method=tf.image.ResizeMethod.BICUBIC)
-    t_n = normalize(t_n, 0, 255)
+    t_n = tf.constant(ops.normalize(t_n.eval(), 0, 255))
     #t_n = t_map(lambda x: numpy.uint8(x), t_n)
     file.write(tf.image.encode_png(t_n).eval())
   index += 1
