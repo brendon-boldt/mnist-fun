@@ -22,10 +22,45 @@ def conv2d(x, W):
 def max_pool_2x2(x):
   return tf.nn.max_pool(x, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
+def write_weights():
+  dir = "weights/"
+  mo.tensor_to_idx(W_fc1, dir+"W_fc1")
+  mo.tensor_to_idx(b_fc1, dir+"b_fc1")
+  mo.tensor_to_idx(W_fc2, dir+"W_fc2")
+  mo.tensor_to_idx(b_fc2, dir+"b_fc2")
+  mo.tensor_to_idx(W_conv1, dir+"W_conv1")
+  mo.tensor_to_idx(b_conv1, dir+"b_conv1")
+  mo.tensor_to_idx(W_conv2, dir+"W_conv2")
+  mo.tensor_to_idx(b_conv2, dir+"b_conv2")
+  '''
+  mo.tensor_to_idx(W_fc1.eval(), dir+"W_fc1")
+  mo.tensor_to_idx(b_fc1.eval(), dir+"b_fc1")
+  mo.tensor_to_idx(W_fc2.eval(), dir+"W_fc2")
+  mo.tensor_to_idx(b_fc2.eval(), dir+"b_fc2")
+  mo.tensor_to_idx(W_conv1.eval(), dir+"W_conv1")
+  mo.tensor_to_idx(b_conv1.eval(), dir+"b_conv1")
+  mo.tensor_to_idx(W_conv2.eval(), dir+"W_conv2")
+  mo.tensor_to_idx(b_conv2.eval(), dir+"b_conv2")
+  '''
+
+
+if len(sys.argv) > 1 and sys.argv[1] == 'new':
+  W_conv1 = weight_variable([5,5,1,32])
+  b_conv1 = bias_variable([32])
+  W_conv2 = weight_variable([5,5,32,64])
+  b_conv2 = bias_variable([64])
+  W_fc1 = weight_variable([7 * 7 * 64, 1024])
+  b_fc1 = bias_variable([1024])
+  W_fc2 = weight_variable([1024, 10])
+  b_fc2 = bias_variable([10])
+  sess.run(tf.initialize_all_variables()) 
+  write_weights()
+
+
 dir = "weights/"
 
 x  = tf.placeholder("float", shape=[None, 784])
-y_ = tf.placeholder("float", shape=[None, 10 ])
+y_= tf.placeholder("float", shape=[None, 10 ])
 x_image = tf.reshape(x, [-1,28,28,1])
 
 # W_conv1 = weight_variable([5,5,1,32])
@@ -58,18 +93,10 @@ correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 sess.run(tf.initialize_all_variables()) 
 
-def write_weights():
-  dir = "weights/"
-  mo.tensor_to_idx(W_fc1, dir+"W_fc1")
-  mo.tensor_to_idx(b_fc1, dir+"b_fc1")
-  mo.tensor_to_idx(W_fc2, dir+"W_fc2")
-  mo.tensor_to_idx(b_fc2, dir+"b_fc2")
-  mo.tensor_to_idx(W_conv1, dir+"W_conv1")
-  mo.tensor_to_idx(b_conv1, dir+"b_conv1")
-  mo.tensor_to_idx(W_conv2, dir+"W_conv2")
-  mo.tensor_to_idx(b_conv2, dir+"b_conv2")
-
-if sys.argv[1] != None and sys.argv[1] == 'means':
+#### Add a way to set the number of loops
+#### Also create a way to safely interrrupt the process
+## Also, this is going to lead to overfitting, just to let you know
+if len(sys.argv) > 1 and sys.argv[1] == 'placeholders':
   dir = 'weights/'
   batch = mnist.train.next_batch(50)
   mo.tensor_to_idx(x_image.eval(feed_dict={x:[batch[0][0]]}), dir+"x_image")
@@ -86,6 +113,10 @@ if sys.argv[1] != None and sys.argv[1] == 'means':
   print("h_pool2\t", tf.reduce_max(h_pool2).eval(feed_dict={x:[batch[0][0]]}))
   print("h_fc1\t", tf.reduce_max(h_fc1).eval(feed_dict={x:[batch[0][0]]}))
   print("y_conv\t", tf.reduce_max(tf.matmul(h_fc1_drop, W_fc2) + b_fc2).eval(feed_dict={x:[batch[0][0]], keep_prob:1.0}))
+elif len(sys.argv) > 2 and sys.argv[1] == 'number':
+  x_temp = [tf.reshape(mo.idx_to_tensor("idx_numbers/"+sys.argv[2]+".gz"), [-1]).eval()]
+  y_temp = numpy.array([[1,0,0,0,0,0,0,0,0,0]], dtype=numpy.float32)
+  print(y_conv.eval(feed_dict={x:x_temp, y_:y_temp, keep_prob:1.0}))
 else:
   for i in range(20000):
     batch = mnist.train.next_batch(50)
