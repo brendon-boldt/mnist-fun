@@ -1,6 +1,7 @@
+import sys
+import time
 import molasses as mo
 import numpy
-import time
 import ops
 
 import tensorflow as tf
@@ -20,16 +21,12 @@ def partial_add(arg_larger, arg_smaller, origin):
       larger[origin[0]+i,origin[1]+j] += smaller[i,j]
   return larger
 
-# amap      : [14,14,64]
-# filters   : [5,5,32,64]
-# Filter format [x,y,channels,volume]
 def dconv(arg_map, arg_filters, padding=2):
   amap = arg_map#.eval()
   filters = arg_filters#.eval()
   y_size = arg_map.shape[0]#.get_shape().dims[0].value
   x_size = arg_map.shape[1]#.get_shape().dims[1].value
   channels = arg_filters.shape[2]#.get_shape().dims[2].value
-  #image = tf.zeros([y_size + padding*2, x_size + padding*2, channels])
   image = numpy.zeros([y_size + padding*2, x_size + padding*2, channels])
   for i in range(y_size):
     for j in range(x_size):
@@ -38,6 +35,8 @@ def dconv(arg_map, arg_filters, padding=2):
       image = partial_add(image, delta, [i, j])
   return image[padding:-padding,padding:-padding]
 
+# Modify this such that I can use the weights produced
+# by mnist_image.py
 dir = "weights/"
 _W_fc2 = mo.idx_to_array(dir + "W_fc2")
 _W_fc2_pinv = numpy.linalg.pinv(_W_fc2, 1e-7).astype('f4')
@@ -74,21 +73,13 @@ _W_conv1 = mo.idx_to_array(dir + "W_conv1")
   activation values that got us the (given) y_; it should be enough, though
   to assume that all activation happened in proporition to the weights of
   the full connected layer.
-  And we're probably going to need to introduce hyperparameters
+  And we're probably going to need to introduce hyperparameters.
+  It seems as if hyperparameters only go so far as to make things more constrasted
+  as opposed to actually refining any of the present data.
 '''
 def reverse_mnist(number):
   with tf.Graph().as_default() as graph:
     with tf.Session() as sess:
-      '''
-        W_fc2 = tf.constant(_W_fc2)
-        b_fc2 = tf.constant(_b_fc2) 
-        #W_fc1 = tf.constant(_W_fc1)
-        b_fc1 = tf.constant(_b_fc1)
-        b_conv2 = tf.constant(_b_conv2)
-        W_conv2 = tf.constant(_W_conv2)
-        b_conv1 = tf.constant(_b_conv1)
-        W_conv1 = tf.constant(_W_conv1)
-      '''
 
       H_y_ = 50
       y_ = H_y_ * tf.constant(numpy.array([numpy.roll([1.0,0,0,0,0,0,0,0,0,0], number)]), dtype=numpy.float32)
@@ -96,15 +87,15 @@ def reverse_mnist(number):
       h_fc1 = 5 * tf.nn.relu(tf.matmul(y_ - _b_fc2, numpy.transpose(_W_fc2).astype('f4')))
 
       '''
-      # Figure out exactly what is going wrong here because I don't think it is correct
-      salt = numpy.dot(_W_fc1_sq, numpy.random.rand(_W_fc1.shape[1],1))
-      print(_W_fc1_pinv.shape)
-      print(h_fc1)
-      print(salt.shape)
-      print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv))
-      print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + tf.constant(salt))
-      exit()
-      h_pool2_flat = tf.nn.relu(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + salt)
+        # Figure out exactly what is going wrong here because I don't think it is correct
+        salt = numpy.dot(_W_fc1_sq, numpy.random.rand(_W_fc1.shape[1],1))
+        print(_W_fc1_pinv.shape)
+        print(h_fc1)
+        print(salt.shape)
+        print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv))
+        print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + tf.constant(salt))
+        exit()
+        h_pool2_flat = tf.nn.relu(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + salt)
       '''
       #h_pool2_flat = tf.nn.relu(tf.matmul(h_fc1 - _b_fc1, 10 * tf.nn.relu(_W_fc1_pinv)))
       h_pool2_flat =tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv)
@@ -113,6 +104,11 @@ def reverse_mnist(number):
       h_pool2 = tf.reshape(h_pool2_flat, [7, 7, 64]) # I think that's right...
       h_conv2 = tf.image.resize_images(h_pool2,14,14, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
       h_pool1 = tf.constant(dconv(h_conv2.eval() - _b_conv2, _W_conv2))
+      '''
+      print(h_pool1)
+      pass
+      exit()
+      '''
       h_conv1 = tf.image.resize_images(h_pool1 ,28,28, method=tf.image.ResizeMethod.BICUBIC)
       x = tf.constant(dconv(h_conv1.eval() - _b_conv1, _W_conv1))
 
