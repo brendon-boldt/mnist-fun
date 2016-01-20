@@ -35,7 +35,6 @@ def conv2d_transpose_batch(value, filters, batch_size, padding=2):
   tensor_list = []
   shape = list(map(lambda x: x.value, value.get_shape().dims))
   for i in range(batch_size):
-    print("Computing %d of %d"%(i+1, batch_size))
     start = np.array([i], dtype=np.int32)
     start = np.pad(start, (0,len(shape)-1), mode='constant')
     size  = np.pad([1], (0,len(shape)-1), mode='constant', constant_values=(-1))

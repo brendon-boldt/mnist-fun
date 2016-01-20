@@ -35,17 +35,15 @@ def dconv(arg_map, arg_filters, padding=2):
       image = partial_add(image, delta, [i, j])
   return image[padding:-padding,padding:-padding]
 
-# Modify this such that I can use the weights produced
-# by mnist_image.py
-dir = "weights/"
+if len(sys.argv) > 1:
+  dir = sys.argv[1].strip('/') + '/'
+else:
+  dir = "weights/"
 _W_fc2 = mo.idx_to_array(dir + "W_fc2")
 _W_fc2_pinv = numpy.linalg.pinv(_W_fc2, 1e-7).astype('f4')
 _b_fc2 = mo.idx_to_array(dir + "b_fc2")
 _W_fc1 = mo.idx_to_array(dir + "W_fc1")
-#_W_fc1_pinv = numpy.linalg.pinv(_W_fc1, 1e-7)
 _W_fc1_pinv = mo.idx_to_array(dir + "W_fc1_pinv").astype('f4')
-#_W_fc1_sq = numpy.identity(_W_fc1.shape[1]) - numpy.dot(_W_fc1_pinv, _W_fc1)
-_W_fc1_sq = mo.idx_to_array(dir + "W_fc1_sq")
 _b_fc1 = mo.idx_to_array(dir + "b_fc1")
 _b_conv2 = mo.idx_to_array(dir + "b_conv2")
 _W_conv2 = mo.idx_to_array(dir + "W_conv2")
@@ -80,43 +78,17 @@ _W_conv1 = mo.idx_to_array(dir + "W_conv1")
 def reverse_mnist(number):
   with tf.Graph().as_default() as graph:
     with tf.Session() as sess:
-
       H_y_ = 50
       y_ = H_y_ * tf.constant(numpy.array([numpy.roll([1.0,0,0,0,0,0,0,0,0,0], number)]), dtype=numpy.float32)
-      # I don't know the tanspose works better than the pseudoinverse
       h_fc1 = 5 * tf.nn.relu(tf.matmul(y_ - _b_fc2, numpy.transpose(_W_fc2).astype('f4')))
-
-      '''
-        # Figure out exactly what is going wrong here because I don't think it is correct
-        salt = numpy.dot(_W_fc1_sq, numpy.random.rand(_W_fc1.shape[1],1))
-        print(_W_fc1_pinv.shape)
-        print(h_fc1)
-        print(salt.shape)
-        print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv))
-        print(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + tf.constant(salt))
-        exit()
-        h_pool2_flat = tf.nn.relu(tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv) + salt)
-      '''
-      #h_pool2_flat = tf.nn.relu(tf.matmul(h_fc1 - _b_fc1, 10 * tf.nn.relu(_W_fc1_pinv)))
       h_pool2_flat =tf.matmul(h_fc1 - _b_fc1, _W_fc1_pinv)
 
       # It figures that the line labeled with "I think that's right" is the problem
       h_pool2 = tf.reshape(h_pool2_flat, [7, 7, 64]) # I think that's right...
       h_conv2 = tf.image.resize_images(h_pool2,14,14, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
       h_pool1 = tf.constant(dconv(h_conv2.eval() - _b_conv2, _W_conv2))
-      '''
-      print(h_pool1)
-      pass
-      exit()
-      '''
       h_conv1 = tf.image.resize_images(h_pool1 ,28,28, method=tf.image.ResizeMethod.BICUBIC)
       x = tf.constant(dconv(h_conv1.eval() - _b_conv1, _W_conv1))
-
-      '''
-        x_idx = ops.normalize(x.eval(session=sess), 0, 255)
-        #print(tf.squeeze(x_idx/1e10).eval())
-        mo.tensor_to_idx(x_idx * (1.0/255.0), "idx_numbers/"+str(number)+".gz")
-      '''
       with open("number"+str(number)+".png", "wb") as file:
         x = tf.constant(ops.normalize(x.eval(session=sess), 0, 255))
         #t_n = t_map(lambda x: numpy.uint8(x), t_n)
