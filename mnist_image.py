@@ -97,12 +97,15 @@ for i in range(30):
     print("CE: %s"%(train_accuracy,))
   train_step.run(feed_dict={x:images , y_:oh_encodings})
 
-exit()
 dir = "result_images/"
-with open(dir + "number.png", "wb") as file:
-  x_array = (255.0*np.clip(x_image.eval(session=sess, feed_dict={y_:three_oh}), 0.0, 1.0)).astype(np.uint8)
-  x_image = tf.constant(x_array, dtype=np.uint8)
-  file.write(tf.image.encode_png(tf.squeeze(x_image, [0])).eval(session=sess))
+x_arrays = (255.0*np.clip(x_image.eval(session=sess, feed_dict={y_:oh_encodings}), 0.0, 1.0)).astype(np.uint8)
+
+class_index = 0
+for x_array in x_arrays: 
+  with open(dir + "class" + str(class_index) + ".png", "wb") as file:
+    x_image = tf.constant(x_array, dtype=np.uint8)
+    file.write(tf.image.encode_png(x_image).eval(session=sess))
+    class_index += 1
 
 
 exit()
